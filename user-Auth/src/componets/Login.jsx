@@ -1,5 +1,12 @@
-import React, { useState } from "react";
-import { Link } from "react-router";
+import React, { use, useState } from "react";
+import { Link, Navigate } from "react-router";
+import { toast } from "react-toastify";
+import { auth } from "../cofig/FireBase";
+import { useNavigate } from "react-router";
+
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+
+
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -8,6 +15,7 @@ export default function LoginPage() {
     rememberMe: false,
   });
 
+   const navigate = useNavigate();
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -37,13 +45,19 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-     if(!validateForm()) return ;
+    const {email , password} = formData ;
+    if (!validateForm()) return;
 
-     try {
-         await signInWithEmailAndPassword(auth , )
-     } catch (error) {
-        
-     }
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log("user succesfully login !" );
+      toast.success("login succesfully");
+      navigate("/TodoPages")
+      
+    } catch (error) {
+      console.log(error.message);
+      toast.error(error.message);
+    }
   };
 
   const handleSocialLogin = (provider) => {

@@ -1,16 +1,24 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../cofig/FireBase";
+import { useNavigate } from "react-router-dom";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+   
+
+  const navigator = useNavigate();
 
   const validateEmail = (email) => {
     return /\S+@\S+\.\S+/.test(email);
   };
 
   const handleSubmit = async (e) => {
+    console.log("input data email:", e);
     e.preventDefault();
     setError("");
 
@@ -26,25 +34,35 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Password reset email sent to:", email);
+    try {
+      await sendPasswordResetEmail(auth, email)
+      .then(() =>{
+        navigator('/Reset-password')        
+      })
+      alert("data send succefully");
+      console.log("SUCCESS: Firebase accepted the request");
       setIsSubmitted(true);
       setIsLoading(false);
-    }, 1500);
+      console.log("succefully send for rest password ");
+    } catch (error) {
+      console.error("FAILURE:", error.code, error.message);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      console.log("Resent password reset email to:", email);
-      setIsLoading(false);
+    try {
+      await sendPasswordResetEmail(auth, email);
       alert("Email resent successfully!");
-    }, 1500);
+    } catch (error) {
+      alert("Error resending email: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         {!isSubmitted ? (
           <>
@@ -90,7 +108,7 @@ export default function ForgotPasswordPage() {
                   name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder="xyz@example.com"
                   className={`w-full px-4 py-3 border ${
                     error ? "border-red-500" : "border-gray-300"
                   } rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition`}
@@ -98,7 +116,6 @@ export default function ForgotPasswordPage() {
                 {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -134,10 +151,9 @@ export default function ForgotPasswordPage() {
               </button>
             </form>
 
-            {/* Back to Login */}
             <div className="mt-6 text-center">
-              <a
-                href="#"
+              <Link
+                to="/login"
                 className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
                 <svg
@@ -154,12 +170,11 @@ export default function ForgotPasswordPage() {
                   />
                 </svg>
                 Back to Login
-              </a>
+              </Link>
             </div>
           </>
         ) : (
           <>
-            {/* Success Message */}
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <svg
@@ -193,7 +208,6 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
 
-              {/* Resend Button */}
               <button
                 onClick={handleResend}
                 disabled={isLoading}
@@ -229,8 +243,8 @@ export default function ForgotPasswordPage() {
               </button>
 
               {/* Back to Login */}
-              <a
-                href="#"
+              <Link
+                to="/login"
                 className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium"
               >
                 <svg
@@ -247,7 +261,7 @@ export default function ForgotPasswordPage() {
                   />
                 </svg>
                 Back to Login
-              </a>
+              </Link>
             </div>
           </>
         )}

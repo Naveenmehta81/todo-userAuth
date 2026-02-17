@@ -8,8 +8,8 @@ const ProtectedRoute = ({ children }) => {
   const [loading, setloading] = useState(true);
 
   useEffect(() => {
-    const nonregisteduser = onAuthStateChanged(auth, (curentuser) => {
-      setUser(curentuser);
+    const nonregisteduser = onAuthStateChanged(auth, (currentuser) => {
+      setUser(currentuser);
       setloading(false);
     });
     return () => nonregisteduser();

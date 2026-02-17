@@ -4,6 +4,8 @@ import { Link } from "react-router";
 import { auth, db } from "../cofig/FireBase";
 import { setDoc, doc } from "firebase/firestore";
 import { toast } from "react-toastify";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { useNavigate } from "react-router";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -13,6 +15,9 @@ export default function SignupPage() {
     confirmPassword: "",
     agreeToTerms: false,
   });
+
+  const provider = new GoogleAuthProvider();
+  const navigate = useNavigate();
 
   const [errors, setErrors] = useState({});
 
@@ -82,11 +87,18 @@ export default function SignupPage() {
 
   const handleSocialLogin = (provider) => {
     console.log(`Login with ${provider}`);
-    // Handle social login logic here
+
+    signInWithPopup(auth, provider).then(async (result) => {
+      console.log(result);
+      toast.success("google login succesfully!");
+      if (result.user) {
+        navigate("/Todopages");
+      }
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -256,7 +268,7 @@ export default function SignupPage() {
         {/* Social Login Buttons */}
         <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={() => handleSocialLogin("Google")}
+            onClick={() => handleSocialLogin(provider)}
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -281,7 +293,7 @@ export default function SignupPage() {
           </button>
 
           <button
-            onClick={() => handleSocialLogin("GitHub")}
+            onClick={() => handleSocialLogin(provider)}
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             <svg

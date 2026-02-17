@@ -1,10 +1,21 @@
 import React, { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { confirmPasswordReset } from "firebase/auth";
+import { auth } from "../cofig/FireBase";
+
+function useQuery() {
+  return new URLSearchParams(useLocation().search);
+}
 
 export default function ResetPasswordPage() {
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
   });
+
+  const query = useQuery();
+  const navigate = useNavigate();
+  const oobCode = query.get("oobCode");
 
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -84,20 +95,28 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!oobCode) {
+      alert("error no reset code found in url");
+      return;
+    }
     if (validateForm()) {
       setIsLoading(true);
 
-      // Simulate API call
-      setTimeout(() => {
-        console.log("Password reset successfully");
+      try {
+        await confirmPasswordReset(auth, oobCode, formData.password);
         setIsSubmitted(true);
         setIsLoading(false);
-      }, 1500);
+        alert("succesfuly ! password changed ");
+        navigate("/login");
+      } catch (error) {
+        setIsLoading(false);
+        console.error(error.massage);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         {!isSubmitted ? (
           <>
@@ -411,10 +430,7 @@ export default function ResetPasswordPage() {
 
             {/* Back to Login */}
             <div className="mt-6 text-center">
-              <a
-                href="#"
-                className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-              >
+              <Link className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium">
                 <svg
                   className="w-4 h-4 mr-2"
                   fill="none"
@@ -429,7 +445,7 @@ export default function ResetPasswordPage() {
                   />
                 </svg>
                 Back to Login
-              </a>
+              </Link>
             </div>
           </>
         ) : (
@@ -459,13 +475,9 @@ export default function ResetPasswordPage() {
                 with your new password.
               </p>
 
-              {/* Sign In Button */}
-              <a
-                href="#"
-                className="inline-block w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
-              >
+              <Link className="inline-block w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
                 Sign In
-              </a>
+              </Link>
             </div>
           </>
         )}

@@ -4,9 +4,7 @@ import { toast } from "react-toastify";
 import { auth } from "../cofig/FireBase";
 import { useNavigate } from "react-router";
 
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-
-
+import { signInWithEmailAndPassword  , GoogleAuthProvider, signInWithPopup , } from "firebase/auth";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -15,7 +13,8 @@ export default function LoginPage() {
     rememberMe: false,
   });
 
-   const navigate = useNavigate();
+  const navigate = useNavigate();
+   const provider = new GoogleAuthProvider();
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -45,15 +44,14 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const {email , password} = formData ;
+    const { email, password } = formData;
     if (!validateForm()) return;
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      console.log("user succesfully login !" );
+      console.log("user succesfully login !");
       toast.success("login succesfully");
-      navigate("/TodoPages")
-      
+      navigate("/TodoPages");
     } catch (error) {
       console.log(error.message);
       toast.error(error.message);
@@ -62,11 +60,22 @@ export default function LoginPage() {
 
   const handleSocialLogin = (provider) => {
     console.log(`Login with ${provider}`);
-    // Handle social login logic here
+         try {
+            signInWithPopup(auth , provider).then((result) =>{
+                console.log(result);
+                toast.success("Login succefully with google!")
+                navigate("/TodoPages")
+            })
+         } catch (error) {
+            console.log("google login errro " , error.message);
+            console.error("get a error " , error.message);
+          
+         }
+          
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -92,7 +101,7 @@ export default function LoginPage() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="you@example.com"
+              placeholder="xyz@example.com"
               className={`w-full px-4 py-3 border ${
                 errors.email ? "border-red-500" : "border-gray-300"
               } rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition`}
@@ -144,12 +153,13 @@ export default function LoginPage() {
                 Remember me
               </label>
             </div>
-            <a
-              href="#"
+
+            <Link
               className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              to="/Forget-password"
             >
               Forgot password?
-            </a>
+            </Link>
           </div>
 
           {/* Submit Button */}
@@ -176,7 +186,7 @@ export default function LoginPage() {
         {/* Social Login Buttons */}
         <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={() => handleSocialLogin("Google")}
+            onClick={() => handleSocialLogin(provider)}
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">

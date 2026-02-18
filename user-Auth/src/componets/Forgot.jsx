@@ -35,10 +35,8 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await sendPasswordResetEmail(auth, email)
-      .then(() =>{
-        navigator('/Reset-password')        
-      })
+      await sendPasswordResetEmail(auth, email); 
+      
       alert("data send succefully");
       console.log("SUCCESS: Firebase accepted the request");
       setIsSubmitted(true);

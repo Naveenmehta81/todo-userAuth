@@ -1,125 +1,30 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "../cofig/FireBase";
-import { signOut } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router";
-
+import { GrCheckboxSelected } from "react-icons/gr";
+import { FaTrash, FaSave } from "react-icons/fa";
+import { HiPencilSquare } from "react-icons/hi2";
+import { GiFlamedLeaf } from "react-icons/gi";
+import { CgCloseO } from "react-icons/cg";
+import { toast } from "react-toastify";
 import {
   collection,
   addDoc,
   updateDoc,
   deleteDoc,
   doc,
-  onSnapshot,
+  getDocs,
   query,
   orderBy,
   serverTimestamp,
+  where,
+  limit,
+  startAfter,
 } from "firebase/firestore";
-import { toast } from "react-toastify";
-const COLLECTION = "todos";
 
-export const getTodos    = (cb) => onSnapshot(query(collection(db, COLLECTION), orderBy("createdAt", "desc")), snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-export const addTodo     = (text) => addDoc(collection(db, COLLECTION), { text, completed: false, createdAt: serverTimestamp() });
-export const toggleTodo  = (id, completed) => updateDoc(doc(db, COLLECTION, id), { completed });
-export const deleteTodo  = (id) => deleteDoc(doc(db, COLLECTION, id));
-export const editTodo    = (id, text) => updateDoc(doc(db, COLLECTION, id), { text });
-
-
-// LOCAL MOCK (swap with Firebase functions above)
-let _todos = [
-  {
-    id: "1",
-    text: "Design the Firebase schema",
-    completed: true,
-    createdAt: Date.now() - 86400000,
-  },
-  {
-    id: "2",
-    text: "Set up Firestore rules",
-    completed: false,
-    createdAt: Date.now() - 3600000,
-  },
-  {
-    id: "3",
-    text: "Build the UI components",
-    completed: false,
-    createdAt: Date.now(),
-  },
-];
-const mockDB = {
-  getTodos: (cb) => {
-    cb([..._todos]);
-    return () => {};
-  },
-  addTodo: (text) => {
-    _todos = [
-      {
-        id: Date.now().toString(),
-        text,
-        completed: false,
-        createdAt: Date.now(),
-      },
-      ..._todos,
-    ];
-  },
-  toggleTodo: (id, completed) => {
-    _todos = _todos.map((t) => (t.id === id ? { ...t, completed } : t));
-  },
-  deleteTodo: (id) => {
-    _todos = _todos.filter((t) => t.id !== id);
-  },
-  editTodo: (id, text) => {
-    _todos = _todos.map((t) => (t.id === id ? { ...t, text } : t));
-  },
-};
-
-// ─── Filter tabs ─────────────────────────────────────────────────────────────
 const FILTERS = ["All", "Active", "Done"];
 
-// ─── Icons ───────────────────────────────────────────────────────────────────
-const CheckIcon = () => (
-  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-    <path
-      fillRule="evenodd"
-      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const TrashIcon = () => (
-  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-    <path
-      fillRule="evenodd"
-      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const PenIcon = () => (
-  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-  </svg>
-);
-const SaveIcon = () => (
-  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-    <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293z" />
-  </svg>
-);
-const FlameIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path d="M12 23a7.5 7.5 0 01-5.138-12.963C8.204 8.774 11.5 6.5 11 1.5c6 4 9 8 3 11 1 0 2.5 0 3-2 .5 1 .5 4-3 4.5 2.5 1 3.5 3.5 3.5 5.5A5 5 0 0112 23z" />
-  </svg>
-);
-const CloseIcon = () => (
-  <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-    <path
-      fillRule="evenodd"
-      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-
-// ─── Todo Item ────────────────────────────────────────────────────────────────
 function TodoItem({ todo, onToggle, onDelete, onEdit }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(todo.text);
@@ -138,7 +43,6 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
             : "bg-slate-800/60 border-slate-600/40 hover:border-orange-500/40 hover:bg-slate-800/80"
         }`}
     >
-      {/* Checkbox */}
       <button
         onClick={() => onToggle(todo.id, !todo.completed)}
         className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200
@@ -147,12 +51,10 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
               ? "bg-orange-500 border-orange-500 text-white"
               : "border-slate-500 hover:border-orange-400"
           }`}
-        aria-label="Toggle todo"
       >
-        {todo.completed && <CheckIcon />}
+        {todo.completed && <GrCheckboxSelected />}
       </button>
 
-      {/* Text / Edit field */}
       <div className="flex-1 min-w-0">
         {editing ? (
           <input
@@ -167,30 +69,29 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
           />
         ) : (
           <span
-            className={`text-sm sm:text-base truncate block ${todo.completed ? "line-through text-slate-500" : "text-slate-200"}`}
+            className={`text-sm sm:text-base truncate block ${
+              todo.completed ? "line-through text-slate-500" : "text-slate-200"
+            }`}
           >
             {todo.text}
           </span>
         )}
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-1 shrink-0">
         {editing ? (
           <>
             <button
               onClick={save}
               className="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors"
-              aria-label="Save"
             >
-              <SaveIcon />
+              <FaSave />
             </button>
             <button
               onClick={() => setEditing(false)}
               className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-600/40 transition-colors"
-              aria-label="Cancel"
             >
-              <CloseIcon />
+              <CgCloseO />
             </button>
           </>
         ) : (
@@ -198,16 +99,14 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
             <button
               onClick={() => setEditing(true)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-orange-300 hover:bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-all duration-200"
-              aria-label="Edit"
             >
-              <PenIcon />
+              <HiPencilSquare />
             </button>
             <button
               onClick={() => onDelete(todo.id)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all duration-200"
-              aria-label="Delete"
             >
-              <TrashIcon />
+              <FaTrash />
             </button>
           </>
         )}
@@ -216,60 +115,188 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
   );
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
 export default function TodoApp() {
   const [todos, setTodos] = useState([]);
   const [input, setInput] = useState("");
+
   const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const [cache, setCache] = useState({}); // Stores data for pages {1: [...], 2: [...]}
+  const [lastVisibleMap, setLastVisibleMap] = useState({}); // Stores cursor for each page
+
+  const PAGE_SIZE = 5;
+  const SEARCH_LIMIT = 50; // Fetch more when searching
 
   const navigator = useNavigate();
+  const todoCollection = collection(db, "todos");
 
-  // Subscribe to data source (swap mockDB with Firebase above)
+  // 1. Listen for User Auth
   useEffect(() => {
-    const unsub = mockDB.getTodos(setTodos);
-    return () => unsub && unsub();
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setCache({}); // Clear cache on login
+      } else {
+        navigator("/login");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigator]);
 
-  const refresh = () => mockDB.getTodos(setTodos);
+  const fetchTodos = async (targetPage, isSearching = false) => {
+    if (!currentUser) return;
+    setLoading(true);
 
-  const handleAdd = () => {
-    if (!input.trim()) return;
-    mockDB.addTodo(input.trim());
+    try {
+      // A. Check Cache (If not searching, and we have data)
+      if (!isSearching && cache[targetPage]) {
+        setTodos(cache[targetPage]);
+        setLoading(false);
+        return;
+      }
+
+      // B. Build Base Query
+      let q = query(
+        todoCollection,
+        where("uid", "==", currentUser.uid),
+        orderBy("timestamp", "desc"),
+      );
+
+      // Apply Filter
+      if (filter === "Active") q = query(q, where("completed", "==", false));
+      else if (filter === "Done") q = query(q, where("completed", "==", true));
+
+      // C. Handle Search vs Pagination
+      if (isSearching) {
+        // If searching, ignore pages, fetch 50 items to scan through
+        q = query(q, limit(SEARCH_LIMIT));
+      } else {
+        // Normal Pagination
+        if (targetPage > 1) {
+          const prevCursor = lastVisibleMap[targetPage - 1];
+          if (prevCursor) {
+            q = query(q, startAfter(prevCursor), limit(PAGE_SIZE));
+          }
+        } else {
+          q = query(q, limit(PAGE_SIZE));
+        }
+      }
+
+      // D. Execute Query
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      setTodos(data);
+
+      // E. Update Cache (Only if not searching)
+      if (!isSearching) {
+        setCache((prev) => ({ ...prev, [targetPage]: data }));
+        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+        setLastVisibleMap((prev) => ({ ...prev, [targetPage]: lastDoc }));
+      }
+    } catch (error) {
+      console.error("Error fetching:", error);
+      toast.error("Fetch failed.");
+    }
+    setLoading(false);
+  };
+
+  // 3. Effect: Trigger Fetch (with Debounce for search)
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (search.length > 0) {
+        fetchTodos(1, true); // Search Mode
+      } else {
+        fetchTodos(page, false); // Pagination Mode
+      }
+    }, 500); // Wait 500ms
+
+    return () => clearTimeout(delaySearch);
+  }, [currentUser, page, filter, search]);
+
+  // 4. Handlers
+  const handleNextPage = () => {
+    // Only go next if we have a full page of data
+    if (todos.length === PAGE_SIZE) setPage((p) => p + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) setPage((p) => p - 1);
+  };
+
+  const handleAdd = async () => {
+    if (!input.trim() || !currentUser) return;
+
+    const tempId = Date.now().toString();
+    const newTodo = {
+      id: tempId,
+      text: input,
+      completed: false,
+      uid: currentUser.uid,
+    };
+    setTodos([newTodo, ...todos]);
     setInput("");
-    refresh();
+
+    try {
+      await addDoc(todoCollection, {
+        text: input.trim(),
+        completed: false,
+        timestamp: serverTimestamp(),
+        uid: currentUser.uid,
+      });
+      // Clear cache to force refresh next time we load page 1
+      setCache({});
+    } catch (error) {
+      console.error("Error adding todo:", error);
+    }
   };
 
-  const handleToggle = (id, completed) => {
-    mockDB.toggleTodo(id, completed);
-    refresh();
+  // Handlers for edit/delete need to update UI manually since we aren't using onSnapshot
+  const handleToggle = async (id, completed) => {
+    // Optimistic UI update
+    setTodos(todos.map((t) => (t.id === id ? { ...t, completed } : t)));
+    await updateDoc(doc(db, "todos", id), { completed });
+    setCache({}); // Invalidate cache
   };
-  const handleDelete = (id) => {
-    mockDB.deleteTodo(id);
-    refresh();
+
+  const handleDelete = async (id) => {
+    setTodos(todos.filter((t) => t.id !== id));
+    await deleteDoc(doc(db, "todos", id));
+    setCache({});
   };
-  const handleEdit = (id, text) => {
-    mockDB.editTodo(id, text);
-    refresh();
+
+  const handleEdit = async (id, text) => {
+    setTodos(todos.map((t) => (t.id === id ? { ...t, text } : t)));
+    await updateDoc(doc(db, "todos", id), { text });
+    setCache({});
   };
+
   const clearDone = () => {
-    todos.filter((t) => t.completed).forEach((t) => mockDB.deleteTodo(t.id));
-    refresh();
+    const completedTodos = todos.filter((t) => t.completed);
+    setTodos(todos.filter((t) => !t.completed));
+    completedTodos.forEach(async (t) => {
+      await deleteDoc(doc(db, "todos", t.id));
+    });
+    setCache({});
   };
 
   const handlelogOut = async () => {
     try {
-      await auth.signOut(auth).then(() => {
-        console.log("logout succesfully!");
-        toast.success("user logout succefully!");
-        navigator("/login");
-      });
+      await signOut(auth);
+      toast.success("Logged out successfully!");
+      navigator("/login");
     } catch (error) {
-      console.log("logout error ", error.message);
+      console.log("Logout error ", error.message);
     }
   };
 
-  const filtered = todos.filter((t) =>
-    filter === "All" ? true : filter === "Active" ? !t.completed : t.completed,
+  // Client-side filtering for search
+  const displayedTodos = todos.filter((t) =>
+    t.text.toLowerCase().includes(search.toLowerCase()),
   );
 
   const activeCount = todos.filter((t) => !t.completed).length;
@@ -288,9 +315,8 @@ export default function TodoApp() {
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
             <span className="text-orange-500">
-              <FlameIcon />
+              <GiFlamedLeaf />
             </span>
-
             <h1
               className="text-3xl sm:text-4xl font-black tracking-tight text-white"
               style={{ fontFamily: "'Syne', sans-serif, system-ui" }}
@@ -298,13 +324,15 @@ export default function TodoApp() {
               Do<span className="text-orange-500">it</span>
             </h1>
           </div>
-          <p className="text-slate-400 text-sm">Firebase-ready todoapp</p>
+          <p className="text-slate-400 text-sm">
+            Welcome, {currentUser?.email}
+          </p>
         </div>
 
         {/* ── Stats bar ── */}
         <div className="flex gap-4 mb-6 text-center">
           {[
-            { label: "Total", value: todos.length },
+            { label: "Visible", value: displayedTodos.length },
             { label: "Active", value: activeCount },
             { label: "Done", value: doneCount },
           ].map((s) => (
@@ -318,6 +346,17 @@ export default function TodoApp() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* ── Search Bar ── */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tasks..."
+            className="w-full bg-slate-800/40 border border-slate-700/50 text-slate-300 text-sm rounded-lg px-3 py-2 outline-none focus:border-orange-500/50 transition-colors"
+          />
         </div>
 
         {/* ── Input ── */}
@@ -344,13 +383,13 @@ export default function TodoApp() {
           {FILTERS.map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f);
+                setPage(1);
+                setCache({});
+              }}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200
-                ${
-                  filter === f
-                    ? "bg-orange-500 text-white shadow"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
+                ${filter === f ? "bg-orange-500 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}
             >
               {f}
             </button>
@@ -358,18 +397,24 @@ export default function TodoApp() {
         </div>
 
         {/* ── Todo list ── */}
-        <div className="space-y-2">
-          {filtered.length === 0 ? (
+        <div className="space-y-2 relative min-h-\[200px\]">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
+              <span className="text-orange-500 text-sm animate-pulse">
+                Loading...
+              </span>
+            </div>
+          )}
+
+          {displayedTodos.length === 0 && !loading ? (
             <div className="text-center py-16 text-slate-600">
               <div className="text-4xl mb-3">✓</div>
               <p className="text-sm">
-                {filter === "Done"
-                  ? "Nothing completed yet."
-                  : "You're all caught up!"}
+                {search ? "No tasks match your search." : "No tasks found."}
               </p>
             </div>
           ) : (
-            filtered.map((todo) => (
+            displayedTodos.map((todo) => (
               <TodoItem
                 key={todo.id}
                 todo={todo}
@@ -381,35 +426,50 @@ export default function TodoApp() {
           )}
         </div>
 
-        {/* ── Footer actions ── */}
-        {doneCount > 0 && (
-          <div className="mt-5 flex justify-end">
+        {/* ── Page Controls (Hide when searching) ── */}
+        {!search && (
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-800/40 rounded-xl border border-slate-700/50 mt-4">
             <button
-              onClick={clearDone}
-              className="text-xs text-slate-500 hover:text-red-400 transition-colors border border-slate-700/50 hover:border-red-500/30 px-4 py-2 rounded-lg"
+              onClick={handlePrevPage}
+              disabled={page === 1}
+              className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
-              Clear {doneCount} completed
+              ← Prev
+            </button>
+
+            <span className="text-slate-400 text-sm font-mono">
+              Page {page}
+            </span>
+
+            <button
+              onClick={handleNextPage}
+              // If we have less than PAGE_SIZE, we are at the end
+              disabled={todos.length < PAGE_SIZE}
+              className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
+            >
+              Next →
             </button>
           </div>
         )}
 
-        <div>
+        {/* ── Footer actions ── */}
+        <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-800">
           <button
             onClick={handlelogOut}
-            className="bg-orange-500 hover:bg-orange-400 disabled:opacity-40  text-white font-bold px-5 py-3  m-2 rounded-xl transition-colors text-sm whitespace-nowrap"
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors"
           >
-            Log out
+            Log Out
           </button>
+
+          {doneCount > 0 && (
+            <button
+              onClick={clearDone}
+              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            >
+              Clear Completed
+            </button>
+          )}
         </div>
-        {/* ── Firebase badge ── */}
-        {/* <div className="mt-8 text-center">
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 border border-slate-800 rounded-full px-3 py-1">
-            <span className="text-orange-600">🔥</span>
-            Firebase-ready — swap{" "}
-            <code className="font-mono text-slate-500">mockDB</code> with
-            Firestore calls
-          </span>
-        </div> */}
       </div>
     </div>
   );

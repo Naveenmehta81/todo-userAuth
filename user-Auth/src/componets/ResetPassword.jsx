@@ -16,7 +16,6 @@ export default function ResetPasswordPage() {
   const query = useQuery();
   const navigate = useNavigate();
   const oobCode = query.get("oobCode");
-
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +152,7 @@ export default function ResetPasswordPage() {
                 >
                   New Password
                 </label>
+
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -165,6 +165,7 @@ export default function ResetPasswordPage() {
                       errors.password ? "border-red-500" : "border-gray-300"
                     } rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition pr-10`}
                   />
+
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -385,6 +386,7 @@ export default function ResetPasswordPage() {
                     )}
                   </button>
                 </div>
+
                 {errors.confirmPassword && (
                   <p className="mt-1 text-sm text-red-500">
                     {errors.confirmPassword}

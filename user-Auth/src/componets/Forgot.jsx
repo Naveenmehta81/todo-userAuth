@@ -9,7 +9,6 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-   
 
   const navigator = useNavigate();
 
@@ -35,8 +34,8 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      await sendPasswordResetEmail(auth, email); 
-      
+      await sendPasswordResetEmail(auth, email);
+
       alert("data send succefully");
       console.log("SUCCESS: Firebase accepted the request");
       setIsSubmitted(true);
@@ -240,7 +239,6 @@ export default function ForgotPasswordPage() {
                 )}
               </button>
 
-              {/* Back to Login */}
               <Link
                 to="/login"
                 className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium"

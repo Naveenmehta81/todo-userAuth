@@ -22,6 +22,7 @@ export default function SignupPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [confirmpassword, setconfrimpassword] = useState(false);
+  const [isloading, setLoading] = useState(false);
 
   const provider = new GoogleAuthProvider();
   const providergit = new GithubAuthProvider();
@@ -71,9 +72,13 @@ export default function SignupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isloading) return;
+
     const { email, password, fullName } = formData;
     if (!validateForm()) return;
     console.log("Form submitted:", formData);
+
+    setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       const user = auth.currentUser;
@@ -91,6 +96,8 @@ export default function SignupPage() {
       console.log(error.message);
 
       toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -118,14 +125,12 @@ export default function SignupPage() {
         }
       })
       .catch((error) => {
-        // Handle Errors here.
         const errorCode = error.code;
         const errorMessage = error.message;
-        // The email of the user's account used.
+
         const email = error.customData.email;
-        // The AuthCredential type that was used.
+
         const credential = GithubAuthProvider.credentialFromError(error);
-        // ...
       });
   };
 
@@ -142,7 +147,6 @@ export default function SignupPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Full Name */}
           <div>
             <label
               htmlFor="fullName"
@@ -198,6 +202,7 @@ export default function SignupPage() {
             >
               Password
             </label>
+
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -268,7 +273,7 @@ export default function SignupPage() {
             </label>
             <div className="relative">
               <input
-                type={confirmpassword ? "text" : "confirmPassword"}
+                type={confirmpassword ? "text" : "password"}
                 id="confirmPassword"
                 name="confirmPassword"
                 value={formData.confirmPassword}
@@ -320,6 +325,7 @@ export default function SignupPage() {
                 )}
               </button>
             </div>
+
             {errors.confirmPassword && (
               <p className="mt-1 text-sm text-red-500">
                 {errors.confirmPassword}
@@ -366,9 +372,14 @@ export default function SignupPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            disabled={isloading}
+            className={
+              isloading
+                ? " opacity-50 cursor-not-allowed w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                : "w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            }
           >
-            Sign Up
+            {isloading ? "Creating account..." : "Sign Up"}
           </button>
         </form>
 

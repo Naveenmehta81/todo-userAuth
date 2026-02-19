@@ -19,6 +19,7 @@ export default function LoginPage() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [isloading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const provider = new GoogleAuthProvider();
@@ -52,9 +53,10 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isloading) return;
     const { email, password } = formData;
     if (!validateForm()) return;
-
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       console.log("user succesfully login !");
@@ -64,6 +66,7 @@ export default function LoginPage() {
       console.log(error.message);
       toast.error(error.message);
     }
+    setLoading(false);
   };
 
   const handleSocialLogin = (provider) => {
@@ -225,6 +228,9 @@ export default function LoginPage() {
               >
                 Remember me
               </label>
+              {errors.rememberMe && (
+                <p className="mt-1 text-sm text-red-500">{errors.rememberMe}</p>
+              )}
             </div>
 
             <Link
@@ -238,9 +244,14 @@ export default function LoginPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            disabled={isloading}
+            className={
+              isloading
+                ? "w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98] opacity-50 cursor-not-allowed  "
+                : "w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            }
           >
-            Sign In
+            {isloading ? "login..." : "Sign Up"}
           </button>
         </form>
 

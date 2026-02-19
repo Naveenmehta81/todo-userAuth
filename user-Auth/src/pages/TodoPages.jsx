@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { auth, db } from "../cofig/FireBase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router";
+// icon
 import { GrCheckboxSelected } from "react-icons/gr";
 import { FaTrash, FaSave } from "react-icons/fa";
 import { HiPencilSquare } from "react-icons/hi2";
 import { GiFlamedLeaf } from "react-icons/gi";
 import { CgCloseO } from "react-icons/cg";
+// toast
 import { toast } from "react-toastify";
+// firebase
 import {
   collection,
   addDoc,
@@ -23,6 +26,7 @@ import {
   startAfter,
 } from "firebase/firestore";
 
+// filter
 const FILTERS = ["All", "Active", "Done"];
 
 function TodoItem({ todo, onToggle, onDelete, onEdit }) {
@@ -125,21 +129,20 @@ export default function TodoApp() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const [cache, setCache] = useState({}); // Stores data for pages {1: [...], 2: [...]}
-  const [lastVisibleMap, setLastVisibleMap] = useState({}); // Stores cursor for each page
+  const [cache, setCache] = useState({}); // for todo make save data
+  const [lastVisibleMap, setLastVisibleMap] = useState({});
 
-  const PAGE_SIZE = 5;
-  const SEARCH_LIMIT = 50; // Fetch more when searching
+  const PAGE_SIZE = 10;
+  const SEARCH_LIMIT = 50;
 
   const navigator = useNavigate();
   const todoCollection = collection(db, "todos");
 
-  // 1. Listen for User Auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        setCache({}); // Clear cache on login
+        setCache({});
       } else {
         navigator("/login");
       }
@@ -152,30 +155,27 @@ export default function TodoApp() {
     setLoading(true);
 
     try {
-      // A. Check Cache (If not searching, and we have data)
       if (!isSearching && cache[targetPage]) {
         setTodos(cache[targetPage]);
         setLoading(false);
         return;
       }
 
-      // B. Build Base Query
+      // all todo
       let q = query(
         todoCollection,
         where("uid", "==", currentUser.uid),
         orderBy("timestamp", "desc"),
       );
 
-      // Apply Filter
+      // active
       if (filter === "Active") q = query(q, where("completed", "==", false));
+      // completed ticket
       else if (filter === "Done") q = query(q, where("completed", "==", true));
 
-      // C. Handle Search vs Pagination
       if (isSearching) {
-        // If searching, ignore pages, fetch 50 items to scan through
         q = query(q, limit(SEARCH_LIMIT));
       } else {
-        // Normal Pagination
         if (targetPage > 1) {
           const prevCursor = lastVisibleMap[targetPage - 1];
           if (prevCursor) {
@@ -185,14 +185,11 @@ export default function TodoApp() {
           q = query(q, limit(PAGE_SIZE));
         }
       }
-
-      // D. Execute Query
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
       setTodos(data);
 
-      // E. Update Cache (Only if not searching)
       if (!isSearching) {
         setCache((prev) => ({ ...prev, [targetPage]: data }));
         const lastDoc = snapshot.docs[snapshot.docs.length - 1];
@@ -205,29 +202,29 @@ export default function TodoApp() {
     setLoading(false);
   };
 
-  // 3. Effect: Trigger Fetch (with Debounce for search)
   useEffect(() => {
     const delaySearch = setTimeout(() => {
       if (search.length > 0) {
-        fetchTodos(1, true); // Search Mode
+        fetchTodos(1, true);
       } else {
-        fetchTodos(page, false); // Pagination Mode
+        fetchTodos(page, false);
       }
-    }, 500); // Wait 500ms
+    }, 500);
 
     return () => clearTimeout(delaySearch);
   }, [currentUser, page, filter, search]);
 
-  // 4. Handlers
+  // increase page
   const handleNextPage = () => {
-    // Only go next if we have a full page of data
     if (todos.length === PAGE_SIZE) setPage((p) => p + 1);
   };
 
+  // decrese page end at 1
   const handlePrevPage = () => {
     if (page > 1) setPage((p) => p - 1);
   };
 
+  // add btn
   const handleAdd = async () => {
     if (!input.trim() || !currentUser) return;
 
@@ -248,33 +245,35 @@ export default function TodoApp() {
         timestamp: serverTimestamp(),
         uid: currentUser.uid,
       });
-      // Clear cache to force refresh next time we load page 1
+
       setCache({});
     } catch (error) {
       console.error("Error adding todo:", error);
     }
   };
 
-  // Handlers for edit/delete need to update UI manually since we aren't using onSnapshot
+  // toggle completed or not
   const handleToggle = async (id, completed) => {
-    // Optimistic UI update
     setTodos(todos.map((t) => (t.id === id ? { ...t, completed } : t)));
     await updateDoc(doc(db, "todos", id), { completed });
-    setCache({}); // Invalidate cache
+    setCache({});
   };
 
+  // deleted btn
   const handleDelete = async (id) => {
     setTodos(todos.filter((t) => t.id !== id));
     await deleteDoc(doc(db, "todos", id));
     setCache({});
   };
 
+  // edit btn
   const handleEdit = async (id, text) => {
     setTodos(todos.map((t) => (t.id === id ? { ...t, text } : t)));
     await updateDoc(doc(db, "todos", id), { text });
     setCache({});
   };
 
+  // clear after add
   const clearDone = () => {
     const completedTodos = todos.filter((t) => t.completed);
     setTodos(todos.filter((t) => !t.completed));
@@ -284,6 +283,7 @@ export default function TodoApp() {
     setCache({});
   };
 
+  // logout btn
   const handlelogOut = async () => {
     try {
       await signOut(auth);
@@ -294,13 +294,13 @@ export default function TodoApp() {
     }
   };
 
-  // Client-side filtering for search
+  // visibel count
   const displayedTodos = todos.filter((t) =>
     t.text.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const activeCount = todos.filter((t) => !t.completed).length;
-  const doneCount = todos.filter((t) => t.completed).length;
+  const activeCount = todos.filter((t) => !t.completed).length; // avtive  count
+  const doneCount = todos.filter((t) => t.completed).length; // done count
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-start justify-center py-8 px-4">
@@ -378,7 +378,6 @@ export default function TodoApp() {
           </button>
         </div>
 
-        {/* ── Filter tabs ── */}
         <div className="flex gap-1 mb-4 bg-slate-800/50 rounded-xl p-1 border border-slate-700/40">
           {FILTERS.map((f) => (
             <button
@@ -396,7 +395,6 @@ export default function TodoApp() {
           ))}
         </div>
 
-        {/* ── Todo list ── */}
         <div className="space-y-2 relative min-h-\[200px\]">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10">
@@ -426,7 +424,6 @@ export default function TodoApp() {
           )}
         </div>
 
-        {/* ── Page Controls (Hide when searching) ── */}
         {!search && (
           <div className="flex items-center justify-between px-4 py-3 bg-slate-800/40 rounded-xl border border-slate-700/50 mt-4">
             <button
@@ -443,7 +440,6 @@ export default function TodoApp() {
 
             <button
               onClick={handleNextPage}
-              // If we have less than PAGE_SIZE, we are at the end
               disabled={todos.length < PAGE_SIZE}
               className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
@@ -452,7 +448,6 @@ export default function TodoApp() {
           </div>
         )}
 
-        {/* ── Footer actions ── */}
         <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-800">
           <button
             onClick={handlelogOut}

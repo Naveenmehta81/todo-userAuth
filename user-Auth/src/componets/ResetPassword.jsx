@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
       ...prev,
       [name]: value,
     }));
-    // Clear error for this field when user starts typing
+    
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -91,6 +91,9 @@ export default function ResetPasswordPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+
+
+  // handle submit 
   const handleSubmit = async (e) => {
     e.preventDefault();
 

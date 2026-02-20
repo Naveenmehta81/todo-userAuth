@@ -8,6 +8,7 @@ import ForgotPasswordPage from "./componets/Forgot";
 import ResetPasswordPage from "./componets/ResetPassword";
 import "./App.css";
 import ProtectedRoute from "./componets/ProtectedRoute";
+import Settingpage from "./pages/Settingpage";
 
 function App() {
   return (
@@ -17,8 +18,11 @@ function App() {
           <Route path="/" element={<Login />}></Route>
           <Route path="/login" element={<Login />}></Route>
           <Route path="/Singnup" element={<Signup />}></Route>
-          <Route path="/Forget-password" element ={<ForgotPasswordPage/>}></Route>
-          <Route path="/Reset-password" element ={<ResetPasswordPage/>}></Route>
+          <Route
+            path="/Forget-password"
+            element={<ForgotPasswordPage />}
+          ></Route>
+          <Route path="/Reset-password" element={<ResetPasswordPage />}></Route>
           <Route
             path="/Todopages"
             element={
@@ -27,6 +31,7 @@ function App() {
               </ProtectedRoute>
             }
           ></Route>
+          <Route path="/setting" element={<Settingpage />}></Route>
         </Routes>
       </Router>
       <ToastContainer />

@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
 import { auth, db } from "../cofig/FireBase";
 import { setDoc, doc } from "firebase/firestore";
@@ -12,13 +12,37 @@ import {
 import { useNavigate } from "react-router";
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeToTerms: false,
+  const [formData, setFormData] = useState(() => {
+    const savedraft = sessionStorage.getItem("signup-draft");
+    console.log("page loaded data found in signup ", savedraft);
+    if (savedraft) {
+      const parsed = JSON.parse(savedraft);
+      return {
+        ...parsed,
+        password: "",
+        confirmpassword: "",
+      };
+    }
+    return {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      agreeToTerms: false,
+    };
   });
+
+  useEffect(() => {
+    // Only save if the user has actually typed an email or name
+    if (formData.fullName !== "" || formData.email !== "") {
+      const draftToSave = { ...formData };
+      delete draftToSave.password;
+      delete draftToSave.confirmPassword;
+
+      console.log(" Form changed Saving this to storage:", draftToSave);
+      sessionStorage.setItem("signup-draft", JSON.stringify(draftToSave));
+    }
+  }, [formData]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [confirmpassword, setconfrimpassword] = useState(false);
@@ -91,11 +115,19 @@ export default function SignupPage() {
         });
       }
       console.log("user succefully singup");
-      toast.success("user Registered successfully!");
+      toast.success(" Registered successfully!");
+      sessionStorage.removeItem("signup-draft");
+      setFormData({
+        fullName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        agreeToTerms: false,
+      });
     } catch (error) {
       console.log(error.message);
 
-      toast.error(error.message);
+      toast.error("user exist already ");
     } finally {
       setLoading(false);
     }

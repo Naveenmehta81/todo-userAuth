@@ -1,8 +1,9 @@
-import React, { use, useState } from "react";
+import React, { use, useState, useEffect } from "react";
 import { Link, Navigate } from "react-router";
 import { toast } from "react-toastify";
-import { auth } from "../cofig/FireBase";
+import { auth, db } from "../cofig/FireBase";
 import { useNavigate } from "react-router";
+import { setDoc, doc } from "firebase/firestore";
 
 import {
   signInWithEmailAndPassword,
@@ -12,11 +13,31 @@ import {
 } from "firebase/auth";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    rememberMe: false,
+  const [formData, setFormData] = useState(() => {
+    const savedraft = sessionStorage.getItem("login-draft");
+
+    if (savedraft) {
+      const parse = JSON.parse(savedraft);
+      return {
+        ...parse,
+        password: "",
+      };
+    }
+    return {
+      email: "",
+      password: "",
+      rememberMe: false,
+    };
   });
+
+  useEffect(() => {
+    if (formData.eamil !== "") {
+      const draftTosave = { ...formData };
+      delete draftTosave.password;
+
+      sessionStorage.setItem("login-draft", JSON.stringify(draftTosave));
+    }
+  }, [formData]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isloading, setLoading] = useState(false);
@@ -57,53 +78,66 @@ export default function LoginPage() {
     const { email, password } = formData;
     if (!validateForm()) return;
     setLoading(true);
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       console.log("user succesfully login !");
       toast.success("login succesfully");
+      sessionStorage.removeItem("login-draft");
       navigate("/TodoPages");
     } catch (error) {
       console.log(error.message);
-      toast.error(error.message);
+      toast.error("invalid credential");
     }
     setLoading(false);
   };
 
-  const handleSocialLogin = (provider) => {
+  const handleSocialLogin = async (provider) => {
     console.log(`Login with ${provider}`);
+
     try {
-      signInWithPopup(auth, provider).then((result) => {
-        console.log(result);
+      const result = await signInWithPopup(auth, provider);
+      const googleUsers = result.user;
+
+      if (googleUsers) {
+        await setDoc(
+          doc(db, "googleUsers", googleUsers.uid),
+          {
+            email: googleUsers.email,
+            fullname: googleUsers.displayName || "google user",
+          },
+          { merge: true },
+        );
+
         toast.success("Login succefully with google!");
         navigate("/TodoPages");
-      });
+      }
     } catch (error) {
       console.log("google login errro ", error.message);
       console.error("get a error ", error.message);
     }
   };
 
-  const handleGithubLogin = (providergit) => {
-    signInWithPopup(auth, providergit)
-      .then((result) => {
-        const credential = GithubAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
-        const user = result.user;
-        toast.success("singup with github");
-        if (user) {
-          navigate("/Todopages");
-        }
-      })
-      .catch((error) => {
-        // Handle Errors here.
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        // The email of the user's account used.
-        const email = error.customData.email;
-        // The AuthCredential type that was used.
-        const credential = GithubAuthProvider.credentialFromError(error);
-        // ...
-      });
+  const handleGithubLogin = async (providergit) => {
+    try {
+      const result = await signInWithPopup(auth, providergit);
+      const user = result.user;
+      if (user) {
+        await setDoc(
+          doc(db, "users", user.id),
+          {
+            email: user.email,
+            fullname: user.displayName || "github login",
+          },
+          { merge: true },
+        );
+        toast.success("login with github succefully");
+        navigate("/TodoPages");
+      }
+    } catch (error) {
+      console.error(error.message);
+      toast.error("check credential");
+    }
   };
 
   return (

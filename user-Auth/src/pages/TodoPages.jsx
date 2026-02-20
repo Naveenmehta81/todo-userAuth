@@ -294,6 +294,14 @@ export default function TodoApp() {
     }
   };
 
+  const handlesetting = async () => {
+    try {
+      navigator("/setting");
+    } catch (error) {
+      console.error(error.message);
+    }
+  };
+
   // visibel count
   const displayedTodos = todos.filter((t) =>
     t.text.toLowerCase().includes(search.toLowerCase()),
@@ -454,6 +462,13 @@ export default function TodoApp() {
             className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors"
           >
             Log Out
+          </button>
+
+          <button
+            onClick={handlesetting}
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors"
+          >
+            setting
           </button>
 
           {doneCount > 0 && (

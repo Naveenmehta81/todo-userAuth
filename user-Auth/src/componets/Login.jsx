@@ -94,7 +94,6 @@ export default function LoginPage() {
 
   const handleSocialLogin = async (provider) => {
     console.log(`Login with ${provider}`);
-
     try {
       const result = await signInWithPopup(auth, provider);
       const googleUsers = result.user;
@@ -121,13 +120,13 @@ export default function LoginPage() {
   const handleGithubLogin = async (providergit) => {
     try {
       const result = await signInWithPopup(auth, providergit);
-      const user = result.user;
-      if (user) {
+      const gituser = result.user;
+      if (gituser) {
         await setDoc(
-          doc(db, "users", user.id),
+          doc(db, "users", gituser.id),
           {
-            email: user.email,
-            fullname: user.displayName || "github login",
+            email: gituser.email,
+            fullname: gituser.displayName || "github login",
           },
           { merge: true },
         );
@@ -285,7 +284,7 @@ export default function LoginPage() {
                 : "w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
             }
           >
-            {isloading ? "login..." : "Sign Up"}
+            {isloading ? "login..." : "Sign IN"}
           </button>
         </form>
 

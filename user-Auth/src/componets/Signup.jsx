@@ -133,37 +133,51 @@ export default function SignupPage() {
     }
   };
 
-  const handleSocialLogin = (provider) => {
+  const handleSocialLogin = async (provider) => {
     console.log(`Login with ${provider}`);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const googleUsers = result.user;
 
-    signInWithPopup(auth, provider).then(async (result) => {
-      console.log(result);
-      toast.success("google login succesfully!");
-      if (result.user) {
-        navigate("/Todopages");
+      if (googleUsers) {
+        await setDoc(
+          doc(db, "googleUsers", googleUsers.uid),
+          {
+            email: googleUsers.email,
+            fullname: googleUsers.displayName || "google user",
+          },
+          { merge: true },
+        );
+
+        toast.success("Login succefully with google!");
+        navigate("/TodoPages");
       }
-    });
+    } catch (error) {
+      console.log("google login errro ", error.message);
+      console.error("get a error ", error.message);
+    }
   };
-
-  const handleGitHubLogin = (providergit) => {
-    signInWithPopup(auth, providergit)
-      .then((result) => {
-        const credential = GithubAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
-        const user = result.user;
-        toast.success("singup with github");
-        if (user) {
-          navigate("/Todopages");
-        }
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-
-        const email = error.customData.email;
-
-        const credential = GithubAuthProvider.credentialFromError(error);
-      });
+ 
+  const handleGithubLogin = async (providergit) => { // GIT HUB DEKH NA HAI NOT WORKING STORE DATA IN FIREBASE 
+    try {
+      const result = await signInWithPopup(auth, providergit);
+      const gituser = result.user;
+      if (gituser) {
+        await setDoc(
+          doc(db, "users", gituser.id),
+          {
+            email: gituser.email,
+            fullname: gituser.displayName || "github login",
+          },
+          { merge: true },
+        );
+        toast.success("login with github succefully");
+        navigate("/TodoPages");
+      }
+    } catch (error) {
+      console.error(error.message);
+      toast.error("check credential");
+    }
   };
 
   return (
@@ -455,7 +469,7 @@ export default function SignupPage() {
           </button>
 
           <button
-            onClick={() => handleGitHubLogin(provider)}
+            onClick={() => handleGithubLogin(provider)}
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             <svg

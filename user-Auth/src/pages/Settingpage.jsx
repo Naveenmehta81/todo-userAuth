@@ -4,7 +4,7 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
-  onAuthStateChanged, // <-- Added this import
+  onAuthStateChanged,
 } from "firebase/auth";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router";
@@ -18,30 +18,27 @@ export default function ChangePassword() {
 
   const navigator = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Track if auth is still loading to prevent UI flashes on refresh
+
+  // Track if auth is  still loading to prevent UI flashes on refresh
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isSocialLogin, setIsSocialLogin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    // onAuthStateChanged waits for Firebase to figure out who is logged in
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        
-        // Check if they have an email/password provider linked
+
+        // password means user log in email / password method
         const hasPasswordProvider = user.providerData.some(
-          (provider) => provider.providerId === "password"
+          (provider) => provider.providerId === "password",
         );
-        
-        // If no password provider, they are using Google/GitHub
+
         setIsSocialLogin(!hasPasswordProvider);
       } else {
-        // If they aren't logged in at all, kick them to login
-        navigator("/login"); 
+        navigator("/login");
       }
-      // Finished checking, stop loading
+
       setIsCheckingAuth(false);
     });
 
@@ -55,7 +52,10 @@ export default function ChangePassword() {
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmNewPassword } = passwords;
-
+    if (currentPassword === newPassword) {
+      toast.error("current password and new password are same ");
+      return ;
+    }
     if (newPassword !== confirmNewPassword) {
       toast.error("New passwords do not match!");
       return;
@@ -75,7 +75,7 @@ export default function ChangePassword() {
     try {
       const credential = EmailAuthProvider.credential(
         currentUser.email,
-        currentPassword
+        currentPassword,
       );
       await reauthenticateWithCredential(currentUser, credential);
       await updatePassword(currentUser, newPassword);
@@ -86,8 +86,7 @@ export default function ChangePassword() {
         newPassword: "",
         confirmNewPassword: "",
       });
-      
-      // Optional: Redirect them back to the app after success
+
       navigator("/Todopages");
     } catch (error) {
       if (error.code === "auth/invalid-credential") {
@@ -100,16 +99,18 @@ export default function ChangePassword() {
     }
   };
 
-  // 1. SHOW LOADING STATE while Firebase initializes on refresh
+  // loader when check user is emila / password or socila login
   if (isCheckingAuth) {
     return (
       <div className="w-full max-w-md p-8 mx-auto text-center mt-10">
-        <p className="text-gray-500 font-medium animate-pulse">Checking permissions...</p>
+        <p className="text-gray-500 font-medium animate-pulse">
+          Checking permissions...
+        </p>
       </div>
     );
   }
 
-  // 2. SOCIAL LOGIN USERS: Show friendly message and centered button
+  // msg for social login
   if (isSocialLogin) {
     return (
       <div className="w-full max-w-md p-8 mx-auto mt-10 bg-white shadow-xl rounded-2xl text-center">
@@ -123,7 +124,7 @@ export default function ChangePassword() {
             your social provider.
           </p>
         </div>
-        
+
         <button
           onClick={() => navigator("/Todopages")}
           className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-lg transition-colors border border-slate-300"
@@ -134,7 +135,6 @@ export default function ChangePassword() {
     );
   }
 
-  // 3. EMAIL/PASSWORD USERS: Standard form
   return (
     <div className="w-full max-w-md p-8 mx-auto mt-10 bg-white shadow-xl rounded-2xl">
       <h2 className="mb-6 text-2xl font-bold text-gray-800">Change Password</h2>
@@ -194,7 +194,7 @@ export default function ChangePassword() {
           >
             {isLoading ? "Updating..." : "Update Password"}
           </button>
-          
+
           <button
             type="button"
             onClick={() => navigator("/Todopages")}

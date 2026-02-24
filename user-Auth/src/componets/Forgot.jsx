@@ -2,15 +2,13 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../cofig/FireBase";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const navigator = useNavigate();
 
   const validateEmail = (email) => {
     return /\S+@\S+\.\S+/.test(email);
@@ -36,13 +34,29 @@ export default function ForgotPasswordPage() {
     try {
       await sendPasswordResetEmail(auth, email);
 
-      alert("data send succefully");
       console.log("SUCCESS: Firebase accepted the request");
       setIsSubmitted(true);
       setIsLoading(false);
       console.log("succefully send for rest password ");
     } catch (error) {
-      console.error("FAILURE:", error.code, error.message);
+      console.log("firenase error", error.code);
+      switch (error.code) {
+        case "auth/user-not-found":
+          alert(
+            "We couldn't find an account with that email. Please register first.",
+          );
+          break;
+        case "auth/invalid-email":
+          alert("Please enter a valid email address.");
+          break;
+        case "auth/too-many-requests":
+          alert("Too many attempts. Please try again later.");
+          break;
+        default:
+          console.error("Error resetting password:", error.message);
+          alert("An error occurred. Please try again.");
+      }
+      setIsLoading(false);
     }
   };
 

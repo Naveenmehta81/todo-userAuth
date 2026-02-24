@@ -135,11 +135,15 @@ export default function TodoApp() {
   // const [lastVisibleMap, setLastVisibleMap] = useState({});
 
   const cursors = useRef({});
+
+
+  
   const PAGE_SIZE = 5;
   const navigator = useNavigate();
   const todoCollection = collection(db, "todos");
 
   useEffect(() => {
+    setLoading(true);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
@@ -147,6 +151,7 @@ export default function TodoApp() {
       } else {
         navigator("/login");
       }
+      setLoading(false);
     });
     return () => unsubscribe();
   }, [navigator]);
@@ -193,6 +198,13 @@ export default function TodoApp() {
     try {
       let q = query(todoCollection, where("uid", "==", currentUser.uid));
 
+      // apply filtering
+      if (filter === "Active") {
+        q = query(q, where("completed", "==", false));
+      } else if (filter == "Done") {
+        q = query(q, where("completed", "==", true));
+      }
+
       // Handle ordering based on whether we are searching or not
       if (search.trim()) {
         q = query(
@@ -205,10 +217,6 @@ export default function TodoApp() {
         q = query(q, orderBy("timestamp", "desc"));
       }
 
-      // Apply Filters
-      if (filter === "Active") q = query(q, where("completed", "==", false));
-      if (filter === "Done") q = query(q, where("completed", "==", true));
-
       // Handle Pagination using the useRef cursors
       if (targetPage > 1) {
         const prevCursor = cursors.current[targetPage - 1];
@@ -218,6 +226,7 @@ export default function TodoApp() {
           // Safety fallback if something goes wrong
           q = query(q, limit(PAGE_SIZE));
           setPage(1);
+          targetPage = 1;
         }
       } else {
         q = query(q, limit(PAGE_SIZE));
@@ -225,12 +234,6 @@ export default function TodoApp() {
 
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-      if (data.length === 0 && targetPage > 1) {
-        setPage(targetPage - 1);
-        return;
-      }
-
       setTodos(data);
 
       // Save the last document of THIS page as the cursor for the NEXT page
@@ -251,6 +254,11 @@ export default function TodoApp() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    cursors.current = {};
+    setPage(1);
+  }, [filter, search]);
 
   // 1. Removed setTimeout debouncer.
   // 2. Fetch runs immediately on dependency change.
@@ -361,7 +369,9 @@ export default function TodoApp() {
   let currentTotalCount = state.total;
   if (filter === "Active") currentTotalCount = state.active;
   if (filter === "Done") currentTotalCount = state.done;
-  const totalPages = Math.ceil(currentTotalCount / PAGE_SIZE) || 1;
+
+  // count total  page
+  const totalPages = Math.ceil(currentTotalCount / PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-start justify-center py-8 px-4">
@@ -485,19 +495,19 @@ export default function TodoApp() {
           <div className="flex items-center justify-between px-4 py-3 bg-slate-800/40 rounded-xl border border-slate-700/50 mt-4">
             <button
               onClick={handlePrevPage}
-              disabled={page === 1}
+              disabled={page === 1 || loading}
               className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
               ← Prev
             </button>
 
             <span className="text-slate-400 text-sm font-mono">
-              Page {page} of {totalPages}
+              {loading ? "Loading..." : `Page ${page} of ${totalPages}`}
             </span>
 
             <button
               onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || loading}
               className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
               Next →

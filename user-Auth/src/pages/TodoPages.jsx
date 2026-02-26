@@ -2,15 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { auth, db } from "../cofig/FireBase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router";
-// icons
 import { GrCheckboxSelected } from "react-icons/gr";
 import { FaTrash, FaSave } from "react-icons/fa";
 import { HiPencilSquare } from "react-icons/hi2";
 import { GiFlamedLeaf } from "react-icons/gi";
 import { CgCloseO } from "react-icons/cg";
-// toast
 import { toast } from "react-toastify";
-// firebase
 import {
   collection,
   addDoc,
@@ -28,6 +25,7 @@ import {
 } from "firebase/firestore";
 
 const FILTERS = ["All", "Active", "Done"];
+const PAGE_SIZE = 5;
 
 function TodoItem({ todo, onToggle, onDelete, onEdit }) {
   const [editing, setEditing] = useState(false);
@@ -41,20 +39,16 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
   return (
     <div
       className={`group flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300
-        ${
-          todo.completed
-            ? "bg-slate-800/30 border-slate-700/30 opacity-60"
-            : "bg-slate-800/60 border-slate-600/40 hover:border-orange-500/40 hover:bg-slate-800/80"
-        }`}
+      ${
+        todo.completed
+          ? "bg-slate-800/30 border-slate-700/30 opacity-60"
+          : "bg-slate-800/60 border-slate-600/40 hover:border-orange-500/40 hover:bg-slate-800/80"
+      }`}
     >
       <button
         onClick={() => onToggle(todo.id, !todo.completed)}
         className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200
-          ${
-            todo.completed
-              ? "bg-orange-500 border-orange-500 text-white"
-              : "border-slate-500 hover:border-orange-400"
-          }`}
+          ${todo.completed ? "bg-orange-500 border-orange-500 text-white" : "border-slate-500 hover:border-orange-400"}`}
       >
         {todo.completed && <GrCheckboxSelected />}
       </button>
@@ -73,9 +67,7 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
           />
         ) : (
           <span
-            className={`text-sm sm:text-base truncate block ${
-              todo.completed ? "line-through text-slate-500" : "text-slate-200"
-            }`}
+            className={`text-sm sm:text-base truncate block ${todo.completed ? "line-through text-slate-500" : "text-slate-200"}`}
           >
             {todo.text}
           </span>
@@ -122,23 +114,17 @@ function TodoItem({ todo, onToggle, onDelete, onEdit }) {
 export default function TodoApp() {
   const [todos, setTodos] = useState([]);
   const [input, setInput] = useState("");
-
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
-
   const [state, setState] = useState({ total: 0, active: 0, done: 0 });
 
-  // Cache removed. Keeping cursor map for reliable pagination.
-  // const [lastVisibleMap, setLastVisibleMap] = useState({});
-
   const cursors = useRef({});
+  const pageCache = useRef({});
 
 
-  
-  const PAGE_SIZE = 5;
   const navigator = useNavigate();
   const todoCollection = collection(db, "todos");
 
@@ -148,181 +134,143 @@ export default function TodoApp() {
       if (user) {
         setCurrentUser(user);
         fetchStats(user.uid);
-      } else {
-        navigator("/login");
-      }
+      } else navigator("/login");
       setLoading(false);
     });
     return () => unsubscribe();
   }, [navigator]);
 
-  const fetchStats = async (uid = currentUser?.uid) => {
-    if (!uid) return;
+
+
+  const fetchStats = async (uid) => {
+    const uid_ = uid ?? currentUser?.uid;
+    if (!uid_) return;
     try {
-      const totalQ = query(todoCollection, where("uid", "==", uid));
-      const activeQ = query(
-        todoCollection,
-        where("uid", "==", uid),
-        where("completed", "==", false),
-      );
-      const doneQ = query(
-        todoCollection,
-        where("uid", "==", uid),
-        where("completed", "==", true),
-      );
-
+      const base = where("uid", "==", uid_);
       const [totSnap, actSnap, doneSnap] = await Promise.all([
-        getCountFromServer(totalQ),
-        getCountFromServer(activeQ),
-        getCountFromServer(doneQ),
+        getCountFromServer(query(todoCollection, base)),
+        getCountFromServer(
+          query(todoCollection, base, where("completed", "==", false)),
+        ),
+        getCountFromServer(
+          query(todoCollection, base, where("completed", "==", true)),
+        ),
       ]);
-
       setState({
         total: totSnap.data().count,
         active: actSnap.data().count,
         done: doneSnap.data().count,
       });
     } catch (error) {
-      console.error("STATS ERROR: You likely need a Firebase Index!", error);
-      toast.error(
-        "Open your browser console and click the Firebase index link to fix stats.",
-      );
+      console.error("STATS ERROR:", error);
+      toast.error("Stats failed. Check console for Firebase index link.");
     }
   };
 
-  // Fetch handles standard queries, filters, and direct Firebase search
+
   const fetchTodos = async (targetPage) => {
     if (!currentUser) return;
+
+
+    // if date allready there 
+    if (pageCache.current[targetPage]) {
+      setTodos(pageCache.current[targetPage]);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let q = query(todoCollection, where("uid", "==", currentUser.uid));
+      
+      const constraints = [where("uid", "==", currentUser.uid)];
+      
+      if (filter === "Active")
+        constraints.push(where("completed", "==", false));
+      if (filter === "Done") constraints.push(where("completed", "==", true));
 
-      // apply filtering
-      if (filter === "Active") {
-        q = query(q, where("completed", "==", false));
-      } else if (filter == "Done") {
-        q = query(q, where("completed", "==", true));
-      }
-
-      // Handle ordering based on whether we are searching or not
       if (search.trim()) {
-        q = query(
-          q,
+        constraints.push(
           where("text", ">=", search),
           where("text", "<=", search + "\uf8ff"),
           orderBy("text"),
         );
       } else {
-        q = query(q, orderBy("timestamp", "desc"));
+        constraints.push(orderBy("timestamp", "desc"));
       }
 
-      // Handle Pagination using the useRef cursors
-      if (targetPage > 1) {
-        const prevCursor = cursors.current[targetPage - 1];
-        if (prevCursor) {
-          q = query(q, startAfter(prevCursor), limit(PAGE_SIZE));
-        } else {
-          // Safety fallback if something goes wrong
-          q = query(q, limit(PAGE_SIZE));
-          setPage(1);
-          targetPage = 1;
-        }
-      } else {
-        q = query(q, limit(PAGE_SIZE));
+      if (targetPage > 1 && cursors.current[targetPage - 1]) {
+        constraints.push(startAfter(cursors.current[targetPage - 1]));
       }
 
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      constraints.push(limit(PAGE_SIZE));
+
+      const snapshot = await getDocs(query(todoCollection, ...constraints));
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      pageCache.current[targetPage] = data;
       setTodos(data);
-
-      // Save the last document of THIS page as the cursor for the NEXT page
-      if (snapshot.docs.length > 0) {
+      if (snapshot.docs.length > 0)
         cursors.current[targetPage] = snapshot.docs[snapshot.docs.length - 1];
-      }
     } catch (error) {
       console.error("Fetch Error:", error.message);
       setTodos([]);
-      if (error.message.includes("requires an index")) {
-        toast.error(
-          "Search failed: Missing Firebase Index. Check console for the link to build it.",
-        );
-      } else {
-        toast.error("Failed to fetch tasks.");
-      }
+      toast.error(
+        error.message.includes("requires an index")
+          ? "Search failed: Missing Firebase Index. Check console."
+          : "Failed to fetch tasks.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
+  const resetAndFetch = () => {
+    pageCache.current = {};
     cursors.current = {};
-    setPage(1);
-  }, [filter, search]);
+  };
 
-  // 1. Removed setTimeout debouncer.
-  // 2. Fetch runs immediately on dependency change.
   useEffect(() => {
+    if (!currentUser) return;
+    resetAndFetch();
+    fetchTodos(1);
+  }, [filter, search, currentUser]);
+  useEffect(() => {
+    if (!currentUser) return;
     fetchTodos(page);
-    // fetchStats();
-  }, [currentUser, page, filter, search]);
+  }, [page]);
 
-  // --- HANDLERS (with built-in resets to prevent race conditions) ---
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value);
-    setPage(1);
-    cursors.current = {}; // Clear cursors when searching
-  };
-
-  const handleFilterChange = (f) => {
-    setFilter(f);
-    setPage(1);
-    cursors.current = {}; // Clear cursors when filtering
-  };
-
-  // const handleNextPage = () => {
-  //   if (todos.length >= PAGE_SIZE) setPage((p) => p + 1);
-  // };
-
-  const handlePrevPage = () => {
-    if (page > 1) setPage((p) => p - 1);
-  };
-
-  // ADD: Optimistic update + immediate refetch to sync DB and fix pagination
   const handleAdd = async () => {
     if (!input.trim() || !currentUser) return;
-
-    const tempId = Date.now().toString();
-    const newTodo = {
-      id: tempId,
-      text: input,
-      completed: false,
-      uid: currentUser.uid,
-    };
-
-    // Optimistic UI update
-    setTodos([newTodo, ...todos]);
+    const text = input.trim();
+    setTodos([
+      {
+        id: Date.now().toString(),
+        text,
+        completed: false,
+        uid: currentUser.uid,
+      },
+      ...todos,
+    ]);
     setInput("");
-
     try {
       await addDoc(todoCollection, {
-        text: input.trim(),
+        text,
         completed: false,
         timestamp: serverTimestamp(),
         uid: currentUser.uid,
       });
-      // Refetch to ensure true sync from Firebase (no manual refresh needed)
-      fetchTodos(1);
-      setPage(1);
+      resetAndFetch();
       fetchStats();
-    } catch (error) {
-      console.error("Error adding todo:", error);
+      page === 1 ? fetchTodos(1) : setPage(1);
+    } catch (e) {
+      console.error("Error adding todo:", e);
     }
   };
 
   const handleToggle = async (id, completed) => {
     setTodos(todos.map((t) => (t.id === id ? { ...t, completed } : t)));
     await updateDoc(doc(db, "todos", id), { completed });
+    resetAndFetch();
     fetchTodos(page);
     fetchStats();
   };
@@ -330,6 +278,7 @@ export default function TodoApp() {
   const handleDelete = async (id) => {
     setTodos(todos.filter((t) => t.id !== id));
     await deleteDoc(doc(db, "todos", id));
+    resetAndFetch();
     fetchTodos(page);
     fetchStats();
   };
@@ -337,17 +286,14 @@ export default function TodoApp() {
   const handleEdit = async (id, text) => {
     setTodos(todos.map((t) => (t.id === id ? { ...t, text } : t)));
     await updateDoc(doc(db, "todos", id), { text });
+    resetAndFetch();
     fetchTodos(page);
   };
 
   const clearDone = async () => {
-    const completedTodos = todos.filter((t) => t.completed);
+    const completed = todos.filter((t) => t.completed);
     setTodos(todos.filter((t) => !t.completed));
-
-    const deletePromises = completedTodos.map((t) =>
-      deleteDoc(doc(db, "todos", t.id)),
-    );
-    await Promise.all(deletePromises);
+    await Promise.all(completed.map((t) => deleteDoc(doc(db, "todos", t.id))));
     fetchTodos(page);
     fetchStats();
   };
@@ -355,34 +301,29 @@ export default function TodoApp() {
   const handlelogOut = async () => {
     try {
       await signOut(auth);
-      toast.success("Logged out successfully!");
+      toast.success("Logged out!");
       navigator("/login");
-    } catch (error) {
-      console.log("Logout error ", error.message);
+    } catch (e) {
+      console.error("Logout error:", e.message);
     }
   };
 
-  const handlesetting = () => {
-    navigator("/setting");
-  };
-
-  let currentTotalCount = state.total;
-  if (filter === "Active") currentTotalCount = state.active;
-  if (filter === "Done") currentTotalCount = state.done;
-
-  // count total  page
+  const currentTotalCount =
+    filter === "Active"
+      ? state.active
+      : filter === "Done"
+        ? state.done
+        : state.total;
   const totalPages = Math.ceil(currentTotalCount / PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-start justify-center py-8 px-4">
-      {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[30%] w-96 h-96 bg-orange-600/10 rounded-full blur-3xl" />
         <div className="absolute bottom-[-10%] right-[20%] w-80 h-80 bg-amber-500/8 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-xl">
-        {/* ── Header ── */}
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
             <span className="text-orange-500">
@@ -390,7 +331,7 @@ export default function TodoApp() {
             </span>
             <h1
               className="text-3xl sm:text-4xl font-black tracking-tight text-white"
-              style={{ fontFamily: "'Syne', sans-serif, system-ui" }}
+              style={{ fontFamily: "'Syne', sans-serif" }}
             >
               Do<span className="text-orange-500">it</span>
             </h1>
@@ -400,7 +341,6 @@ export default function TodoApp() {
           </p>
         </div>
 
-        {/* ── Stats bar ── */}
         <div className="flex gap-4 mb-6 text-center">
           {[
             { label: "Total", value: state.total },
@@ -419,18 +359,14 @@ export default function TodoApp() {
           ))}
         </div>
 
-        {/* ── Search Bar ── */}
-        <div className="mb-4">
-          <input
-            type="text"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search tasks in database..."
-            className="w-full bg-slate-800/40 border border-slate-700/50 text-slate-300 text-sm rounded-lg px-3 py-2 outline-none focus:border-orange-500/50 transition-colors"
-          />
-        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search tasks..."
+          className="w-full mb-4 bg-slate-800/40 border border-slate-700/50 text-slate-300 text-sm rounded-lg px-3 py-2 outline-none focus:border-orange-500/50 transition-colors"
+        />
 
-        {/* ── Input ── */}
         <div className="flex gap-2 mb-5">
           <input
             type="text"
@@ -443,7 +379,7 @@ export default function TodoApp() {
           <button
             onClick={handleAdd}
             disabled={!input.trim()}
-            className="bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-5 py-3 rounded-xl transition-colors text-sm whitespace-nowrap"
+            className="bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-5 py-3 rounded-xl transition-colors text-sm"
           >
             Add
           </button>
@@ -453,16 +389,15 @@ export default function TodoApp() {
           {FILTERS.map((f) => (
             <button
               key={f}
-              onClick={() => handleFilterChange(f)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200
-                ${filter === f ? "bg-orange-500 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}
+              onClick={() => setFilter(f)}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${filter === f ? "bg-orange-500 text-white shadow" : "text-slate-400 hover:text-slate-200"}`}
             >
               {f}
             </button>
           ))}
         </div>
 
-        <div className="space-y-2 relative min-h-\[\200px]">
+        <div className="space-y-2 relative min-h-[200px]">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 z-10 rounded-xl">
               <span className="text-orange-500 text-sm animate-pulse">
@@ -470,7 +405,6 @@ export default function TodoApp() {
               </span>
             </div>
           )}
-
           {todos.length === 0 && !loading ? (
             <div className="text-center py-16 text-slate-600">
               <div className="text-4xl mb-3">✓</div>
@@ -494,17 +428,15 @@ export default function TodoApp() {
         {!search && (
           <div className="flex items-center justify-between px-4 py-3 bg-slate-800/40 rounded-xl border border-slate-700/50 mt-4">
             <button
-              onClick={handlePrevPage}
+              onClick={() => setPage((p) => p - 1)}
               disabled={page === 1 || loading}
               className="text-sm px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
             >
               ← Prev
             </button>
-
             <span className="text-slate-400 text-sm font-mono">
               {loading ? "Loading..." : `Page ${page} of ${totalPages}`}
             </span>
-
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={page >= totalPages || loading}
@@ -522,14 +454,12 @@ export default function TodoApp() {
           >
             Log Out
           </button>
-
           <button
-            onClick={handlesetting}
+            onClick={() => navigator("/setting")}
             className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors"
           >
             Settings
           </button>
-
           {state.done > 0 && (
             <button
               onClick={clearDone}

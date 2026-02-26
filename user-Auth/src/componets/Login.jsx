@@ -30,7 +30,7 @@ export default function LoginPage() {
     };
   });
 
-  useEffect(() => {
+   useEffect(() => {
     if (formData.eamil !== "") {
       const draftTosave = { ...formData };
       delete draftTosave.password;
@@ -46,6 +46,7 @@ export default function LoginPage() {
   const provider = new GoogleAuthProvider();
   const providergit = new GithubAuthProvider();
   const [errors, setErrors] = useState({});
+  const[user ,setUser] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

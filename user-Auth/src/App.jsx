@@ -9,6 +9,7 @@ import ResetPasswordPage from "./componets/ResetPassword";
 import "./App.css";
 import ProtectedRoute from "./componets/ProtectedRoute";
 import Settingpage from "./pages/Settingpage";
+import PublicRoute from "./componets/Publicrouter";
 
 function App() {
   return (
@@ -16,8 +17,23 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Login />}></Route>
-          <Route path="/login" element={<Login />}></Route>
-          <Route path="/Singnup" element={<Signup />}></Route>
+
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
+          ></Route>
+          <Route
+            path="/Singnup"
+            element={
+              <PublicRoute>
+                <Signup />
+              </PublicRoute>
+            }
+          ></Route>
           <Route
             path="/Forget-password"
             element={<ForgotPasswordPage />}
@@ -31,7 +47,14 @@ function App() {
               </ProtectedRoute>
             }
           ></Route>
-          <Route path="/setting" element={<Settingpage />}></Route>
+          <Route
+            path="/setting"
+            element={
+              <ProtectedRoute>
+                <Settingpage />
+              </ProtectedRoute>
+            }
+          ></Route>
         </Routes>
       </Router>
       <ToastContainer />

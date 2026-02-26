@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
       ...prev,
       [name]: value,
     }));
-    
+
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -91,9 +91,7 @@ export default function ResetPasswordPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-
-
-  // handle submit 
+  // handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -435,7 +433,10 @@ export default function ResetPasswordPage() {
 
             {/* Back to Login */}
             <div className="mt-6 text-center">
-              <Link className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+              <Link
+                to="/login"
+                className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              >
                 <svg
                   className="w-4 h-4 mr-2"
                   fill="none"
@@ -480,7 +481,10 @@ export default function ResetPasswordPage() {
                 with your new password.
               </p>
 
-              <Link className="inline-block w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
+              <Link
+                to="/login"
+                className="inline-block w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+              >
                 Sign In
               </Link>
             </div>

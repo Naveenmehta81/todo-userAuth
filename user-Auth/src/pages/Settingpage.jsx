@@ -54,7 +54,7 @@ export default function ChangePassword() {
     const { currentPassword, newPassword, confirmNewPassword } = passwords;
     if (currentPassword === newPassword) {
       toast.error("current password and new password are same ");
-      return ;
+      return;
     }
     if (newPassword !== confirmNewPassword) {
       toast.error("New passwords do not match!");

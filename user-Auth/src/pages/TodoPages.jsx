@@ -22,6 +22,7 @@ export default function TodoApp() {
   const {
     todos,
     loading,
+    fetchStats,
     page,
     setPage,
     stats,
@@ -38,15 +39,26 @@ export default function TodoApp() {
     return () => unsubscribe();
   }, [navigate]);
 
-
   const handleAdd = async () => {
     console.log("clicked on add");
-
     if (!input.trim()) return;
     const text = input.trim();
-    setInput("");
     await todoService.add(currentUser.uid, text);
+    setInput("");
     resetPagination();
+    fetchStats();
+  };
+
+  // logout
+  const handlelogOut = () => {
+    console.log("you cliked on logout ");
+    try {
+      signOut(auth);
+      toast.success("log out successfully");
+      navigate("/login");
+    } catch (error) {
+      console.error("logout not succesfull", error);
+    }
   };
 
   const totalPages = Math.ceil(
@@ -159,6 +171,23 @@ export default function TodoApp() {
             className="px-4 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-30"
           >
             Next
+          </button>
+        </div>
+
+        {/* logout and setting page for change password */}
+        <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-800">
+          <button
+            onClick={handlelogOut}
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors"
+          >
+            Log Out
+          </button>
+
+          <button
+            onClick={() => navigate("/setting")}
+            className="bg-orange-500 hover:bg-orange-400 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors"
+          >
+            Settings
           </button>
         </div>
       </div>

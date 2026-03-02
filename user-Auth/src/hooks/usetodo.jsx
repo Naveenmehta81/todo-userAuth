@@ -1,23 +1,21 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { todoService } from "../services/todoservices.jsx";
 import { toast } from "react-toastify";
 
 export function useTodos(currentUser, filter, search, pageSize = 5) {
+
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [stats, setStats] = useState({ total: 0, active: 0, done: 0 });
 
-  const cursors = useRef({});
+
+  const cursors = useRef({}); // cursor.current - we can read property , cursor.current={} - write the pro    
   const pageCache = useRef({});
+   console.log("this is where we need to start",cursors);
+   console.log("this is where data save" , pageCache);
 
-  const resetPagination = () => {
-    pageCache.current = {};
-    cursors.current = {};
-    setPage(1); // clear and set page 1
-  };
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!currentUser) return;
     try {
       const newStats = await todoService.getStats(currentUser.uid);
@@ -25,62 +23,101 @@ export function useTodos(currentUser, filter, search, pageSize = 5) {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [currentUser]);
 
-  const loadTodos = async (targetPage) => {
-    console.log("fethcing page", targetPage);
+  const loadTodos = useCallback(
+    async (targetPage) => {
+      if (!currentUser) return;
 
-    if (!currentUser) return;
+      if (pageCache.current[targetPage]) {
+        setTodos(pageCache.current[targetPage]);
+        return;
+      }
 
-    console.log("this is your user", currentUser.email);
+      setLoading(true);
+      try {
+        const { data, lastDoc } = await todoService.fetchTodos({
+          uid: currentUser.uid,
+          filter,
+          search,
+          targetCursor: targetPage > 1 ? cursors.current[targetPage - 1] : null,
+          pageSize,
+        });
 
-    if (pageCache.current[targetPage]) {
-      setTodos(pageCache.current[targetPage]);
-      return;
-    }
+        pageCache.current[targetPage] = data;
+        if (lastDoc) cursors.current[targetPage] = lastDoc;
+        setTodos(data);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to fetch tasks.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentUser, filter, search, pageSize],
+  );
 
-    setLoading(true);
+  //  resetPagination
+  const resetAndLoad = useCallback(
+    (targetPage = 1) => {
+      pageCache.current = {};
+      cursors.current = {};
+      setPage(targetPage);
 
-    try {
-      const { data, lastDoc } = await todoService.fetchTodos({
-        uid: currentUser.uid,
-        filter,
-        search,
-        targetCursor: targetPage > 1 ? cursors.current[targetPage - 1] : null,
-        pageSize,
+      loadTodos(targetPage);
+    },
+    [loadTodos],
+  );
+
+  // Kept for external use
+  const resetPagination = useCallback(() => {
+    resetAndLoad(1);
+  }, [resetAndLoad]);
+
+  //  redirect to prev page if current page becomes empty
+  const softDelete = useCallback(
+    (id) => {
+      setTodos((prev) => {
+        const updated = prev.filter((t) => t.id !== id);
+
+        // If page is now empty and we're not on page 1, go back
+        if (updated.length === 0 && page > 1) {
+          const prevPage = page - 1;
+          delete pageCache.current[page];
+          setPage(prevPage);
+          loadTodos(prevPage);
+        }
+
+        return updated;
       });
+      fetchStats();
+    },
+    [page, fetchStats, loadTodos],
+  );
 
-      pageCache.current[targetPage] = data;
-      if (lastDoc) cursors.current[targetPage] = lastDoc;
-      setTodos(data);
-    } catch (error) {
-      toast.error("Failed to fetch tasks.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const softUpdate = useCallback(
+    (id, fields) => {
+      setTodos((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...fields } : t)),
+      );
+      fetchStats();
+    },
+    [fetchStats],
+  );
 
-  // Optimistic UI Handlers
-  const softUpdate = (id, fields) => {
-    setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...fields } : t)),
-    );
-    fetchStats();
-  };
-
-  const softDelete = (id) => {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
-    fetchStats();
-  };
-
+  //  Re-run when filter/search/user changes — use resetAndLoad directly
   useEffect(() => {
-    resetPagination();
+    if (!currentUser) return;
+    pageCache.current = {};
+    cursors.current = {};
+    setPage(1);
     loadTodos(1);
+    fetchStats();
   }, [filter, search, currentUser]);
 
   useEffect(() => {
     loadTodos(page);
-  }, [page]);
+  }, [page]); // loadTodos intentionally omitted to avoid loop
 
   return {
     todos,

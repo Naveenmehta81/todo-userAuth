@@ -4,12 +4,27 @@ import { Link } from "react-router";
 import { auth, db } from "../cofig/FireBase";
 import { setDoc, doc } from "firebase/firestore";
 import { toast } from "react-toastify";
+import { z } from "zod";
 import {
   GoogleAuthProvider,
   signInWithPopup,
   GithubAuthProvider,
 } from "firebase/auth";
 import { useNavigate } from "react-router";
+
+const Singnupschema = z
+  .object({
+    fullName: z.string().min(5),
+    email: z.string().min(1, "Email is required").email("Invalid email"),
+    password: z.string().min(8, "Min 8 rquired"),
+    confirmPassword: z.string().min(8, "min 8 required "),
+
+    agreeToTerms: z.boolean(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "password do not match",
+    path: ["confirmPassword "],
+  });
 
 export default function SignupPage() {
   const [formData, setFormData] = useState(() => {
@@ -64,34 +79,53 @@ export default function SignupPage() {
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const result = Singnupschema.safeParse(formData);
+    if (!result.success) {
+      const fielderror = result.error.flatten().fieldErrors;
+      const newerror = {};
 
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
+      if (fielderror.fullName) newerror.fullName = fielderror.fullName[0];
+      if (fielderror.email) newerror.email = fielderror.email[0];
+      if (fielderror.password) newerror.password = fielderror.password[0];
+      if (fielderror.confirmPassword)
+        newerror.confirmPassword = fielderror.confirmPassword[0];
+      if (fielderror.agreeToTerms)
+        newerror.agreeToTerms = fielderror.agreeToTerms[0];
+
+      setErrors(newerror);
+      return false;
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
+    setErrors({});
+    return true;
+    // const newErrors = {};
 
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
-    }
+    // if (!formData.fullName.trim()) {
+    //   newErrors.fullName = "Full name is required";
+    // }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
+    // if (!formData.email.trim()) {
+    //   newErrors.email = "Email is required";
+    // } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    //   newErrors.email = "Email is invalid";
+    // }
 
-    if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = "You must agree to the terms";
-    }
+    // if (!formData.password) {
+    //   newErrors.password = "Password is required";
+    // } else if (formData.password.length < 8) {
+    //   newErrors.password = "Password must be at least 8 characters";
+    // }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // if (formData.password !== formData.confirmPassword) {
+    //   newErrors.confirmPassword = "Passwords do not match";
+    // }
+
+    // if (!formData.agreeToTerms) {
+    //   newErrors.agreeToTerms = "You must agree to the terms";
+    // }
+
+    // setErrors(newErrors);
+    // return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
@@ -157,14 +191,15 @@ export default function SignupPage() {
       console.error("get a error ", error.message);
     }
   };
- 
-  const handleGithubLogin = async (providergit) => { // GIT HUB DEKH NA HAI NOT WORKING STORE DATA IN FIREBASE 
+
+  const handleGithubLogin = async (providergit) => {
+    // GIT HUB DEKH NA HAI NOT WORKING STORE DATA IN FIREBASE
     try {
       const result = await signInWithPopup(auth, providergit);
       const gituser = result.user;
       if (gituser) {
         await setDoc(
-          doc(db, "users", gituser.id),
+          doc(db, "users", gituser.uid),
           {
             email: gituser.email,
             fullname: gituser.displayName || "github login",
@@ -192,7 +227,7 @@ export default function SignupPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div>
             <label
               htmlFor="fullName"

@@ -9,7 +9,7 @@ import {
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router";
 
-export default function ChangePassword() {
+export default function ChangePassword() { 
   const [passwords, setPasswords] = useState({
     currentPassword: "",
     newPassword: "",
@@ -29,7 +29,6 @@ export default function ChangePassword() {
       if (user) {
         setCurrentUser(user);
 
-        // password means user log in email / password method
         const hasPasswordProvider = user.providerData.some(
           (provider) => provider.providerId === "password",
         );

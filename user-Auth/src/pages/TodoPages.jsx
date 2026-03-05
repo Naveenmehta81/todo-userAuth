@@ -4,7 +4,6 @@ import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { GiFlamedLeaf } from "react-icons/gi";
-
 import { useTodos } from "../hooks/usetodo.jsx";
 import { todoService } from "../services/todoservices.jsx";
 import TodoItem from "../pages/Todolist.jsx";
@@ -103,7 +102,7 @@ export default function TodoApp() {
           placeholder="Search tasks..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full mb-4 bg-slate-800/40 border border-slate-700/50 text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-orange-500/50"
+          className="w-full h-12 mb-4 bg-slate-800/40 border border-slate-700/50 text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-orange-500/50"
         />
 
         <div className="flex gap-2 mb-5">
@@ -135,7 +134,7 @@ export default function TodoApp() {
           ))}
         </div>
 
-        {/* here my to list render */}
+        {/* here my to list render  and delted and edit btn */}
 
         <div className="space-y-2">
           {loading && (
@@ -163,6 +162,8 @@ export default function TodoApp() {
             Prev
           </button>
           <span className="text-slate-400 self-center">
+
+            
             Page {page} of {totalPages || 1}
           </span>
           <button

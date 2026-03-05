@@ -3,25 +3,24 @@ import { todoService } from "../services/todoservices.jsx";
 import { toast } from "react-toastify";
 
 export function useTodos(currentUser, filter, search, pageSize = 5) {
-
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [stats, setStats] = useState({ total: 0, active: 0, done: 0 });
 
-
-  const cursors = useRef({}); // cursor.current - we can read property , cursor.current={} - write the pro    
+  const cursors = useRef({}); // cursor.current - we can read property , cursor.current={} - write the pro
   const pageCache = useRef({});
-   console.log("this is where we need to start",cursors);
-   console.log("this is where data save" , pageCache);
+
+  console.log("this is where we need to start", cursors);
+  console.log("this is where data save", pageCache);
 
   const fetchStats = useCallback(async () => {
     if (!currentUser) return;
     try {
       const newStats = await todoService.getStats(currentUser.uid);
       setStats(newStats);
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error("faild to fetch state ", error);
     }
   }, [currentUser]);
 
@@ -80,7 +79,7 @@ export function useTodos(currentUser, filter, search, pageSize = 5) {
       setTodos((prev) => {
         const updated = prev.filter((t) => t.id !== id);
 
-        // If page is now empty and we're not on page 1, go back
+        // here we handel to page if we delete all record then go the previous page
         if (updated.length === 0 && page > 1) {
           const prevPage = page - 1;
           delete pageCache.current[page];

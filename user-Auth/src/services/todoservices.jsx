@@ -54,7 +54,7 @@ export const todoService = {
 
     if (targetCursor) constraints.push(startAfter(targetCursor));
     constraints.push(limit(pageSize));
-                                                
+
     const q = query(todoCollection, ...constraints);
     const snapshot = await getDocs(q);
 
@@ -64,6 +64,7 @@ export const todoService = {
     };
   },
 
+  // add in database
   async add(uid, text) {
     return await addDoc(todoCollection, {
       text,
@@ -73,17 +74,17 @@ export const todoService = {
     });
   },
 
+  // edit and update
   async update(id, updates) {
-     
     return await updateDoc(doc(db, "todos", id), updates);
   },
 
+  // delete data base
   async delete(id) {
-     console.log("clicked on deleted btn:",id);
-    return await deleteDoc(doc(db, "todos", id),
-              console.log('succesfully deleted ')
-         )
-    ;
-   
+    console.log("clicked on deleted btn:", id);
+    return await deleteDoc(
+      doc(db, "todos", id),
+      console.log("succesfully deleted "),
+    );
   },
 };

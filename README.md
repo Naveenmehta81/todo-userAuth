@@ -19,5 +19,9 @@ so go to firbase and authenticaton
  that's it data goes in firebase . one cathc here if we need to see name or other detail then not seen bcz in firebase auth only give email password .
  so we use in that when we need to all data then clound firebase storage .
   we need to connect cloude storage so go to firebase 
+
+
+
+  
      
 

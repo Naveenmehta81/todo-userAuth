@@ -10,7 +10,7 @@ export default function TodoItem({ todo, onSoftUpdate, onSoftDelete }) {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(todo.text);
-  console.log("set of 5 list render in draf ", draft);
+  console.log("set of 5 list render in draf ", draft); 
 
   const handleToggle = async () => {
     const newStatus = !todo.completed;

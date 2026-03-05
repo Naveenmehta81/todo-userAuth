@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { auth, db } from "../cofig/FireBase";
 import { useNavigate } from "react-router";
 import { setDoc, doc } from "firebase/firestore";
+import { z } from "zod";
 
 import {
   signInWithEmailAndPassword,
@@ -11,6 +12,12 @@ import {
   signInWithPopup,
   GithubAuthProvider,
 } from "firebase/auth";
+
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Invalid email"),
+  password: z.string().min(8, "min 8 lenght req"),
+  rememberMe: z.boolean().optional(),
+});
 
 export default function LoginPage() {
   const [formData, setFormData] = useState(() => {
@@ -30,8 +37,8 @@ export default function LoginPage() {
     };
   });
 
-   useEffect(() => {
-    if (formData.eamil !== "") {
+  useEffect(() => {
+    if (formData.email !== "") {
       const draftTosave = { ...formData };
       delete draftTosave.password;
 
@@ -46,7 +53,7 @@ export default function LoginPage() {
   const provider = new GoogleAuthProvider();
   const providergit = new GithubAuthProvider();
   const [errors, setErrors] = useState({});
-  const[user ,setUser] = useState(null);
+  const [user, setUser] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,31 +61,35 @@ export default function LoginPage() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const result = loginSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const newErrors = {};
+      if (fieldErrors.email) newErrors.email = fieldErrors.email[0];
+      if (fieldErrors.password) newErrors.password = fieldErrors.password[0];
 
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
+      setErrors(newErrors);
+      return false;
     }
 
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors({}); // Clear errors
+    return true; // Form is valid
   };
 
   const handleSubmit = async (e) => {
+    console.log("clicked to login !");
     e.preventDefault();
     if (isloading) return;
-    const { email, password } = formData;
     if (!validateForm()) return;
     setLoading(true);
+    const { email, password } = formData;
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -124,7 +135,7 @@ export default function LoginPage() {
       const gituser = result.user;
       if (gituser) {
         await setDoc(
-          doc(db, "users", gituser.id),
+          doc(db, "users", gituser.uid),
           {
             email: gituser.email,
             fullname: gituser.displayName || "github login",
@@ -152,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {/* Email */}
           <div>
             <label

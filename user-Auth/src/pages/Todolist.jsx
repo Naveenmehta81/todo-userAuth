@@ -44,7 +44,7 @@ export default function TodoItem({ todo, onSoftUpdate, onSoftDelete }) {
         className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
           todo.completed
             ? "bg-orange-500 border-orange-500 text-white"
-            : "border-slate-500"
+            : "border-slate-700"
         }`}
       >
         {todo.completed && <GrCheckboxSelected />}
@@ -61,7 +61,7 @@ export default function TodoItem({ todo, onSoftUpdate, onSoftDelete }) {
           />
         ) : (
           <span
-            className={`text-sm truncate block ${todo.completed ? "line-through text-slate-500" : "text-slate-200"}`}
+            className={`text-sm truncate block ${todo.completed ? "line-through text-slate-100" : "text-slate-200"}`}
           >
             {todo.text}
           </span>
@@ -83,7 +83,7 @@ export default function TodoItem({ todo, onSoftUpdate, onSoftDelete }) {
         )}
         <button
           onClick={handleDelete}
-          className="p-1.5 text-slate-400 hover:text-red-400"
+          className="p-1.5 text-slate-100 hover:text-red-800"
         >
           <FaTrash />
         </button>

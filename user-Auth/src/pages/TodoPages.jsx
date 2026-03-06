@@ -69,7 +69,7 @@ export default function TodoApp() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8 px-4 flex justify-center">
+    <div className="min-h-screen bg-slate-600 py-8 px-4 flex justify-center">
       <div className="w-full max-w-xl relative">
         {/* Header & Stats */}
         <div className="text-center mb-8">
@@ -77,7 +77,7 @@ export default function TodoApp() {
             <GiFlamedLeaf className="text-orange-500" /> Do
             <span className="text-orange-500">it</span>
           </h1>
-          <p className="text-slate-400 text-sm mt-2">{currentUser?.email}</p>
+          <p className="text-slate-1000 text-sm mt-2">{currentUser?.email}</p>
         </div>
 
         <div className="flex gap-4 mb-6">
@@ -91,7 +91,7 @@ export default function TodoApp() {
               className="flex-1 bg-slate-800/60 border border-slate-700/40 rounded-xl py-3 text-center"
             >
               <div className="text-xl font-bold text-white">{s.v}</div>
-              <div className="text-xs text-slate-500 uppercase">{s.l}</div>
+              <div className="text-xs text-slate-200 uppercase">{s.l}</div>
             </div>
           ))}
         </div>
@@ -157,19 +157,17 @@ export default function TodoApp() {
           <button
             disabled={page === 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-4 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-30"
+            className="px-4 py-2 bg-slate-900 text-white rounded-lg disabled:opacity-30"
           >
             Prev
           </button>
           <span className="text-slate-400 self-center">
-
-            
             Page {page} of {totalPages || 1}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-4 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-30"
+            className="px-4 py-2 bg-slate-900 text-white rounded-lg disabled:opacity-30"
           >
             Next
           </button>

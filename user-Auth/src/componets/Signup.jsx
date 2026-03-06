@@ -23,7 +23,7 @@ const Singnupschema = z
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "password do not match",
-    path: ["confirmPassword "],
+    path: ["confirmPassword"],
   });
 
 export default function SignupPage() {
@@ -71,6 +71,7 @@ export default function SignupPage() {
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
+     console.log(e);
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -504,7 +505,7 @@ export default function SignupPage() {
           </button>
 
           <button
-            onClick={() => handleGithubLogin(provider)}
+            onClick={() => handleGithubLogin(providergit)}
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             <svg
